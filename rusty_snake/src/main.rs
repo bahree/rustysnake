@@ -5,7 +5,7 @@
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode},
-    execute,
+    execute, // Explicitly import execute! macro
     style::{Color, Print, SetForegroundColor},
     terminal::{self, ClearType},
 };
@@ -24,8 +24,8 @@ fn main() -> crossterm::Result<()> {
     terminal::enable_raw_mode()?;
     execute!(stdout, terminal::Clear(ClearType::All), cursor::Hide)?;
 
-    const WIDTH: i32 = 20;
-    const HEIGHT: i32 = 10;
+    const WIDTH: i32 = 40; // Larger width
+    const HEIGHT: i32 = 20; // Larger height
 
     let mut snake = vec![Point { x: WIDTH / 2, y: HEIGHT / 2 }];
     let mut food = Point {
@@ -34,8 +34,11 @@ fn main() -> crossterm::Result<()> {
     };
     let mut direction = Point { x: 1, y: 0 }; // Moving right
     let mut last_instant = Instant::now();
+    let mut score = 0; // Track the score
+    let mut paused = false; // Pause state
 
     // Draw initial walls
+    draw_score(&mut stdout, score)?; // Draw score above game area
     draw_walls(&mut stdout, WIDTH, HEIGHT)?;
 
     loop {
@@ -43,14 +46,20 @@ fn main() -> crossterm::Result<()> {
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
-                    KeyCode::Esc => break, // Exit game
-                    KeyCode::Up if direction.y == 0 => direction = Point { x: 0, y: -1 },
-                    KeyCode::Down if direction.y == 0 => direction = Point { x: 0, y: 1 },
-                    KeyCode::Left if direction.x == 0 => direction = Point { x: -1, y: 0 },
-                    KeyCode::Right if direction.x == 0 => direction = Point { x: 1, y: 0 },
+                    KeyCode::Char('q') => break, // Quit the game
+                    KeyCode::Char(' ') => paused = !paused, // Pause/unpause
+                    KeyCode::Up if !paused && direction.y == 0 => direction = Point { x: 0, y: -1 },
+                    KeyCode::Down if !paused && direction.y == 0 => direction = Point { x: 0, y: 1 },
+                    KeyCode::Left if !paused && direction.x == 0 => direction = Point { x: -1, y: 0 },
+                    KeyCode::Right if !paused && direction.x == 0 => direction = Point { x: 1, y: 0 },
                     _ => {}
                 }
             }
+        }
+
+        // If paused, skip game logic
+        if paused {
+            continue;
         }
 
         // Game logic: update snake position
@@ -76,6 +85,8 @@ fn main() -> crossterm::Result<()> {
             if new_head == food {
                 // Snake eats the food and grows
                 snake.push(new_head);
+                score += 1; // Increment the score
+                draw_score(&mut stdout, score)?; // Update score display
 
                 // Generate new food in a random position, avoiding the snake's body
                 let mut rng = rand::thread_rng();
@@ -97,7 +108,7 @@ fn main() -> crossterm::Result<()> {
                 // Clear the old tail position
                 execute!(
                     stdout,
-                    cursor::MoveTo(tail.x as u16, tail.y as u16),
+                    cursor::MoveTo(tail.x as u16, (tail.y + 1) as u16),
                     Print(" ")
                 )?;
             }
@@ -117,7 +128,7 @@ fn draw_walls(stdout: &mut std::io::Stdout, width: i32, height: i32) -> crosster
     for y in 0..height {
         for x in 0..width {
             if y == 0 || y == height - 1 || x == 0 || x == width - 1 {
-                execute!(stdout, cursor::MoveTo(x as u16, y as u16), Print("#"))?;
+                execute!(stdout, cursor::MoveTo(x as u16, (y + 1) as u16), Print("#"))?;
             }
         }
     }
@@ -130,22 +141,43 @@ fn render_snake_and_food(
     food: &Point,
 ) -> crossterm::Result<()> {
     // Draw the snake
-    for segment in snake {
-        execute!(
-            stdout,
-            cursor::MoveTo(segment.x as u16, segment.y as u16),
-            SetForegroundColor(Color::Green), // Green snake
-            Print("█")
-        )?;
+    for (i, segment) in snake.iter().enumerate() {
+        if i == snake.len() - 1 {
+            // Render head differently
+            execute!(
+                stdout,
+                cursor::MoveTo(segment.x as u16, (segment.y + 1) as u16),
+                SetForegroundColor(Color::Yellow), // Yellow snake head
+                Print("█") // Head
+            )?;
+        } else {
+            // Render body
+            execute!(
+                stdout,
+                cursor::MoveTo(segment.x as u16, (segment.y + 1) as u16),
+                SetForegroundColor(Color::Green), // Green snake body
+                Print("█") // Body
+            )?;
+        }
     }
 
     // Draw the food
     execute!(
         stdout,
-        cursor::MoveTo(food.x as u16, food.y as u16),
+        cursor::MoveTo(food.x as u16, (food.y + 1) as u16),
         SetForegroundColor(Color::Red), // Red food
         Print("■")
     )?;
 
+    Ok(())
+}
+
+fn draw_score(stdout: &mut std::io::Stdout, score: i32) -> crossterm::Result<()> {
+    execute!(
+        stdout,
+        cursor::MoveTo(0, 0), // Display score above the playing area
+        SetForegroundColor(Color::White),
+        Print(format!("Score: {}", score))
+    )?;
     Ok(())
 }
