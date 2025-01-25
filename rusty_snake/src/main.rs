@@ -6,7 +6,7 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode},
     execute,
-    style::Print,
+    style::{Color, Print, SetForegroundColor},
     terminal::{self, ClearType},
 };
 use rand::Rng;
@@ -27,16 +27,15 @@ fn main() -> crossterm::Result<()> {
     const WIDTH: i32 = 20;
     const HEIGHT: i32 = 10;
 
-    // Initialize the snake within the bounds
     let mut snake = vec![Point { x: WIDTH / 2, y: HEIGHT / 2 }];
     let mut food = Point {
-        x: 15.min(WIDTH - 2), // Ensure food starts within bounds
+        x: 15.min(WIDTH - 2),
         y: 15.min(HEIGHT - 2),
     };
     let mut direction = Point { x: 1, y: 0 }; // Moving right
     let mut last_instant = Instant::now();
 
-    // Draw the initial walls
+    // Draw initial walls
     draw_walls(&mut stdout, WIDTH, HEIGHT)?;
 
     loop {
@@ -73,6 +72,7 @@ fn main() -> crossterm::Result<()> {
                 break;
             }
 
+            // Update game state: food or move
             if new_head == food {
                 // Snake eats the food and grows
                 snake.push(new_head);
@@ -92,11 +92,18 @@ fn main() -> crossterm::Result<()> {
             } else {
                 // Normal movement: add new head, remove tail
                 snake.push(new_head);
-                snake.remove(0);
+                let tail = snake.remove(0);
+
+                // Clear the old tail position
+                execute!(
+                    stdout,
+                    cursor::MoveTo(tail.x as u16, tail.y as u16),
+                    Print(" ")
+                )?;
             }
         }
 
-        // Render game
+        // Render snake and food
         render_snake_and_food(&mut stdout, &snake, &food)?;
         stdout.flush()?;
     }
@@ -122,15 +129,12 @@ fn render_snake_and_food(
     snake: &[Point],
     food: &Point,
 ) -> crossterm::Result<()> {
-    // Clear the previous snake and food positions
-    execute!(stdout, terminal::Clear(ClearType::All))?;
-    draw_walls(stdout, 20, 10)?;
-
     // Draw the snake
     for segment in snake {
         execute!(
             stdout,
             cursor::MoveTo(segment.x as u16, segment.y as u16),
+            SetForegroundColor(Color::Green), // Green snake
             Print("█")
         )?;
     }
@@ -139,6 +143,7 @@ fn render_snake_and_food(
     execute!(
         stdout,
         cursor::MoveTo(food.x as u16, food.y as u16),
+        SetForegroundColor(Color::Red), // Red food
         Print("■")
     )?;
 
