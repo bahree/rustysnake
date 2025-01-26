@@ -33,6 +33,7 @@ fn main() -> crossterm::Result<()> {
         y: 15.min(HEIGHT - 2),
     };
     let mut direction = Point { x: 1, y: 0 }; // Moving right
+    let mut next_direction = direction.clone(); // Buffer for the next direction
     let mut last_instant = Instant::now();
     let mut score = 0; // Track the score
     let mut paused = false; // Pause state
@@ -48,10 +49,10 @@ fn main() -> crossterm::Result<()> {
                 match key_event.code {
                     KeyCode::Char('q') => break, // Quit the game
                     KeyCode::Char(' ') => paused = !paused, // Pause/unpause
-                    KeyCode::Up if !paused && direction.y == 0 => direction = Point { x: 0, y: -1 },
-                    KeyCode::Down if !paused && direction.y == 0 => direction = Point { x: 0, y: 1 },
-                    KeyCode::Left if !paused && direction.x == 0 => direction = Point { x: -1, y: 0 },
-                    KeyCode::Right if !paused && direction.x == 0 => direction = Point { x: 1, y: 0 },
+                    KeyCode::Up if direction.y == 0 => next_direction = Point { x: 0, y: -1 },
+                    KeyCode::Down if direction.y == 0 => next_direction = Point { x: 0, y: 1 },
+                    KeyCode::Left if direction.x == 0 => next_direction = Point { x: -1, y: 0 },
+                    KeyCode::Right if direction.x == 0 => next_direction = Point { x: 1, y: 0 },
                     _ => {}
                 }
             }
@@ -65,6 +66,9 @@ fn main() -> crossterm::Result<()> {
         // Game logic: update snake position
         if last_instant.elapsed() >= Duration::from_millis(200) {
             last_instant = Instant::now();
+
+            // Apply the queued direction if valid
+            direction = next_direction.clone();
 
             // Move snake
             let mut new_head = snake.last().unwrap().clone();
@@ -123,6 +127,7 @@ fn main() -> crossterm::Result<()> {
     terminal::disable_raw_mode()?;
     Ok(())
 }
+
 
 fn draw_walls(stdout: &mut std::io::Stdout, width: i32, height: i32) -> crossterm::Result<()> {
     for y in 0..height {
