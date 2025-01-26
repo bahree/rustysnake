@@ -74,7 +74,7 @@ Contributions are welcome! If you have ideas for improvements or find any bugs, 
 
 ## Author
 
-Created with ❤️ by [Your Name](https://github.com/your-username).  
+Created with ❤️ by [Amit Bahree](https://github.com/bahree) and an LLM.
 
 ---
 
