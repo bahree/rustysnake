@@ -24,13 +24,16 @@ fn main() -> crossterm::Result<()> {
     terminal::enable_raw_mode()?;
     execute!(stdout, terminal::Clear(ClearType::All), cursor::Hide)?;
 
-    const WIDTH: i32 = 40; // Larger width
-    const HEIGHT: i32 = 20; // Larger height
+    // Allow the user to select the boundary size
+    let (width, height) = select_boundary_size(&mut stdout)?;
 
-    let mut snake = vec![Point { x: WIDTH / 2, y: HEIGHT / 2 }];
+    // Clear the screen after boundary selection
+    execute!(stdout, terminal::Clear(ClearType::All))?;
+
+    let mut snake = vec![Point { x: width / 2, y: height / 2 }];
     let mut food = Point {
-        x: 15.min(WIDTH - 2),
-        y: 15.min(HEIGHT - 2),
+        x: 15.min(width - 2),
+        y: 15.min(height - 2),
     };
     let mut direction = Point { x: 1, y: 0 }; // Moving right
     let mut next_direction = direction.clone(); // Buffer for the next direction
@@ -38,16 +41,21 @@ fn main() -> crossterm::Result<()> {
     let mut score = 0; // Track the score
     let mut paused = false; // Pause state
 
+    let mut game_over_message = None; // Message to display on game over
+
     // Draw initial walls
     draw_score(&mut stdout, score)?; // Draw score above game area
-    draw_walls(&mut stdout, WIDTH, HEIGHT)?;
+    draw_walls(&mut stdout, width, height)?;
 
     loop {
         // Check for user input
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
-                    KeyCode::Char('q') => break, // Quit the game
+                    KeyCode::Char('q') => {
+                        game_over_message = Some("You quit!");
+                        break; // Quit the game
+                    }
                     KeyCode::Char(' ') => paused = !paused, // Pause/unpause
                     KeyCode::Up if direction.y == 0 => next_direction = Point { x: 0, y: -1 },
                     KeyCode::Down if direction.y == 0 => next_direction = Point { x: 0, y: 1 },
@@ -76,12 +84,12 @@ fn main() -> crossterm::Result<()> {
             new_head.y += direction.y;
 
             // Check collisions
-            if new_head.x < 1 || new_head.x >= WIDTH - 1 || new_head.y < 1 || new_head.y >= HEIGHT - 1 {
-                execute!(stdout, cursor::MoveTo(0, HEIGHT as u16 + 2), Print("Game Over! You hit the wall!\n"))?;
+            if new_head.x < 1 || new_head.x >= width - 1 || new_head.y < 1 || new_head.y >= height - 1 {
+                game_over_message = Some("Game Over! You hit the wall!");
                 break;
             }
             if snake.contains(&new_head) {
-                execute!(stdout, cursor::MoveTo(0, HEIGHT as u16 + 2), Print("Game Over! You hit yourself!\n"))?;
+                game_over_message = Some("Game Over! You hit yourself!");
                 break;
             }
 
@@ -96,8 +104,8 @@ fn main() -> crossterm::Result<()> {
                 let mut rng = rand::thread_rng();
                 loop {
                     let new_food = Point {
-                        x: rng.gen_range(1..WIDTH - 1),
-                        y: rng.gen_range(1..HEIGHT - 1),
+                        x: rng.gen_range(1..width - 1),
+                        y: rng.gen_range(1..height - 1),
                     };
                     if !snake.contains(&new_food) {
                         food = new_food;
@@ -123,11 +131,64 @@ fn main() -> crossterm::Result<()> {
         stdout.flush()?;
     }
 
-    execute!(stdout, cursor::Show)?;
+    // Display the game-over message and wait for Enter
+    if let Some(message) = game_over_message {
+        execute!(
+            stdout,
+            cursor::MoveTo(0, height as u16 + 2),
+            SetForegroundColor(Color::White),
+            Print(format!("{}\nPress Enter to continue...", message))
+        )?;
+        wait_for_enter()?;
+    }
+
+    // Clear the screen and show the final score
+    execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0))?;
+    execute!(
+        stdout,
+        Print(format!("Final Score: {}\n", score)),
+        Print("Thank you for playing!\n")
+    )?;
+
     terminal::disable_raw_mode()?;
     Ok(())
 }
 
+fn wait_for_enter() -> crossterm::Result<()> {
+    loop {
+        if event::poll(Duration::from_millis(100))? {
+            if let Event::Key(key_event) = event::read()? {
+                if let KeyCode::Enter = key_event.code {
+                    break;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn select_boundary_size(stdout: &mut std::io::Stdout) -> crossterm::Result<(i32, i32)> {
+    execute!(
+        stdout,
+        cursor::MoveTo(0, 0),
+        SetForegroundColor(Color::White),
+        Print("Select Boundary Size:\n1. Small (20x10)\n2. Medium (40x20)\n3. Large (60x30)\nPress 1, 2, or 3 to choose:")
+    )?;
+    stdout.flush()?;
+
+    loop {
+        if event::poll(Duration::from_millis(100))? {
+            if let Event::Key(key_event) = event::read()? {
+                match key_event.code {
+                    KeyCode::Char('1') => return Ok((20, 10)),  // Small
+                    KeyCode::Char('2') => return Ok((40, 20)),  // Medium
+                    KeyCode::Char('3') => return Ok((60, 30)),  // Large
+                    _ => {}
+                }
+            }
+        }
+    }
+}
 
 fn draw_walls(stdout: &mut std::io::Stdout, width: i32, height: i32) -> crossterm::Result<()> {
     for y in 0..height {
