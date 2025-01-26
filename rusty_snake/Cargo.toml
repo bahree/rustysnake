@@ -1,0 +1,10 @@
+[package]
+name = "rusty_snake"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ggez = "0.7"
+minifb = "0.23"
+crossterm = "0.24"
+rand = "0.8"  # or the latest version
