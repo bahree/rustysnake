@@ -5,7 +5,7 @@
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode},
-    execute, // Explicitly import execute! macro
+    execute,
     style::{Color, Print, SetForegroundColor},
     terminal::{self, ClearType},
 };
@@ -24,10 +24,10 @@ fn main() -> crossterm::Result<()> {
     terminal::enable_raw_mode()?;
     execute!(stdout, terminal::Clear(ClearType::All), cursor::Hide)?;
 
-    // Allow the user to select the boundary size
-    let (width, height) = select_boundary_size(&mut stdout)?;
+    // Allow the user to select the boundary size and initial speed
+    let (width, height, initial_speed) = select_game_settings(&mut stdout)?;
 
-    // Clear the screen after boundary selection
+    // Clear the screen after selection
     execute!(stdout, terminal::Clear(ClearType::All))?;
 
     let mut snake = vec![Point { x: width / 2, y: height / 2 }];
@@ -40,11 +40,12 @@ fn main() -> crossterm::Result<()> {
     let mut last_instant = Instant::now();
     let mut score = 0; // Track the score
     let mut paused = false; // Pause state
+    let mut speed = initial_speed; // Start with the selected speed
 
-    let mut game_over_message = None; // Message to display on game over
+    let game_over_message; // Message to display on game over
 
     // Draw initial walls
-    draw_score(&mut stdout, score)?; // Draw score above game area
+    draw_score(&mut stdout, score, speed)?; // Draw score and speed above game area
     draw_walls(&mut stdout, width, height)?;
 
     loop {
@@ -53,10 +54,22 @@ fn main() -> crossterm::Result<()> {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
                     KeyCode::Char('q') => {
-                        game_over_message = Some("You quit!");
+                        game_over_message = "You quit!";
                         break; // Quit the game
                     }
                     KeyCode::Char(' ') => paused = !paused, // Pause/unpause
+                    KeyCode::Char('+') => {
+                        if speed > 50 {
+                            speed -= 50; // Speed up
+                            draw_score(&mut stdout, score, speed)?;
+                        }
+                    }
+                    KeyCode::Char('-') => {
+                        if speed < 500 {
+                            speed += 50; // Slow down
+                            draw_score(&mut stdout, score, speed)?;
+                        }
+                    }
                     KeyCode::Up if direction.y == 0 => next_direction = Point { x: 0, y: -1 },
                     KeyCode::Down if direction.y == 0 => next_direction = Point { x: 0, y: 1 },
                     KeyCode::Left if direction.x == 0 => next_direction = Point { x: -1, y: 0 },
@@ -72,7 +85,7 @@ fn main() -> crossterm::Result<()> {
         }
 
         // Game logic: update snake position
-        if last_instant.elapsed() >= Duration::from_millis(200) {
+        if last_instant.elapsed() >= Duration::from_millis(speed) {
             last_instant = Instant::now();
 
             // Apply the queued direction if valid
@@ -85,11 +98,11 @@ fn main() -> crossterm::Result<()> {
 
             // Check collisions
             if new_head.x < 1 || new_head.x >= width - 1 || new_head.y < 1 || new_head.y >= height - 1 {
-                game_over_message = Some("Game Over! You hit the wall!");
+                game_over_message = "Game Over! You hit the wall!";
                 break;
             }
             if snake.contains(&new_head) {
-                game_over_message = Some("Game Over! You hit yourself!");
+                game_over_message = "Game Over! You hit yourself!";
                 break;
             }
 
@@ -98,7 +111,7 @@ fn main() -> crossterm::Result<()> {
                 // Snake eats the food and grows
                 snake.push(new_head);
                 score += 1; // Increment the score
-                draw_score(&mut stdout, score)?; // Update score display
+                draw_score(&mut stdout, score, speed)?; // Update score display
 
                 // Generate new food in a random position, avoiding the snake's body
                 let mut rng = rand::thread_rng();
@@ -132,15 +145,13 @@ fn main() -> crossterm::Result<()> {
     }
 
     // Display the game-over message and wait for Enter
-    if let Some(message) = game_over_message {
-        execute!(
-            stdout,
-            cursor::MoveTo(0, height as u16 + 2),
-            SetForegroundColor(Color::White),
-            Print(format!("{}\nPress Enter to continue...", message))
-        )?;
-        wait_for_enter()?;
-    }
+    execute!(
+        stdout,
+        cursor::MoveTo(0, height as u16 + 2),
+        SetForegroundColor(Color::White),
+        Print(format!("{}\nPress Enter to continue...", game_over_message))
+    )?;
+    wait_for_enter()?;
 
     // Clear the screen and show the final score
     execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0))?;
@@ -154,41 +165,118 @@ fn main() -> crossterm::Result<()> {
     Ok(())
 }
 
-fn wait_for_enter() -> crossterm::Result<()> {
-    loop {
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key_event) = event::read()? {
-                if let KeyCode::Enter = key_event.code {
-                    break;
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn select_boundary_size(stdout: &mut std::io::Stdout) -> crossterm::Result<(i32, i32)> {
+fn select_game_settings(stdout: &mut std::io::Stdout) -> crossterm::Result<(i32, i32, u64)> {
     execute!(
         stdout,
         cursor::MoveTo(0, 0),
         SetForegroundColor(Color::White),
-        Print("Select Boundary Size:\n1. Small (20x10)\n2. Medium (40x20)\n3. Large (60x30)\nPress 1, 2, or 3 to choose:")
+        Print("Select Boundary Size:\n"),
+        Print("1. Small (20x10)\n2. Medium (40x20)\n3. Large (60x30)\n"),
+        Print("Press 1, 2, or 3 to choose: ")
     )?;
     stdout.flush()?;
 
+    let width;
+    let height;
+
+    // Get boundary size selection
     loop {
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
-                    KeyCode::Char('1') => return Ok((20, 10)),  // Small
-                    KeyCode::Char('2') => return Ok((40, 20)),  // Medium
-                    KeyCode::Char('3') => return Ok((60, 30)),  // Large
+                    KeyCode::Char('1') => {
+                        width = 20;
+                        height = 10;
+                        execute!(
+                            stdout,
+                            cursor::MoveToNextLine(1),
+                            Print("You selected Small (20x10)\n")
+                        )?;
+                        break;
+                    }
+                    KeyCode::Char('2') => {
+                        width = 40;
+                        height = 20;
+                        execute!(
+                            stdout,
+                            cursor::MoveToNextLine(1),
+                            Print("You selected Medium (40x20)\n")
+                        )?;
+                        break;
+                    }
+                    KeyCode::Char('3') => {
+                        width = 60;
+                        height = 30;
+                        execute!(
+                            stdout,
+                            cursor::MoveToNextLine(1),
+                            Print("You selected Large (60x30)\n")
+                        )?;
+                        break;
+                    }
                     _ => {}
                 }
             }
         }
     }
+
+    let speed;
+
+    // Prompt for difficulty selection
+    execute!(
+        stdout,
+        cursor::MoveToNextLine(2),
+        Print("Select Difficulty:\n"),
+        Print("1. Easy (300ms per tick)\n2. Normal (200ms per tick)\n3. Hard (100ms per tick)\n"),
+        Print("Press 1, 2, or 3 to choose: ")
+    )?;
+    stdout.flush()?;
+
+    // Get difficulty selection
+    loop {
+        if event::poll(Duration::from_millis(100))? {
+            if let Event::Key(key_event) = event::read()? {
+                match key_event.code {
+                    KeyCode::Char('1') => {
+                        speed = 300; // Easy
+                        execute!(
+                            stdout,
+                            cursor::MoveToNextLine(1),
+                            Print("You selected Easy (300ms per tick)\n")
+                        )?;
+                        break;
+                    }
+                    KeyCode::Char('2') => {
+                        speed = 200; // Normal
+                        execute!(
+                            stdout,
+                            cursor::MoveToNextLine(1),
+                            Print("You selected Normal (200ms per tick)\n")
+                        )?;
+                        break;
+                    }
+                    KeyCode::Char('3') => {
+                        speed = 100; // Hard
+                        execute!(
+                            stdout,
+                            cursor::MoveToNextLine(1),
+                            Print("You selected Hard (100ms per tick)\n")
+                        )?;
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    // Wait a moment before clearing the screen
+    std::thread::sleep(Duration::from_millis(1000));
+    execute!(stdout, terminal::Clear(ClearType::All))?;
+
+    Ok((width, height, speed))
 }
+
 
 fn draw_walls(stdout: &mut std::io::Stdout, width: i32, height: i32) -> crossterm::Result<()> {
     for y in 0..height {
@@ -238,12 +326,25 @@ fn render_snake_and_food(
     Ok(())
 }
 
-fn draw_score(stdout: &mut std::io::Stdout, score: i32) -> crossterm::Result<()> {
+fn draw_score(stdout: &mut std::io::Stdout, score: i32, speed: u64) -> crossterm::Result<()> {
     execute!(
         stdout,
         cursor::MoveTo(0, 0), // Display score above the playing area
         SetForegroundColor(Color::White),
-        Print(format!("Score: {}", score))
+        Print(format!("Score: {} | Speed: {}ms", score, speed))
     )?;
+    Ok(())
+}
+
+fn wait_for_enter() -> crossterm::Result<()> {
+    loop {
+        if event::poll(Duration::from_millis(100))? {
+            if let Event::Key(key_event) = event::read()? {
+                if let KeyCode::Enter = key_event.code {
+                    break;
+                }
+            }
+        }
+    }
     Ok(())
 }
