@@ -1,7 +1,3 @@
-// fn main() {
-//     println!("Hello, world!");
-// }
-
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode},
@@ -79,63 +75,81 @@ fn main() -> crossterm::Result<()> {
     let mut direction = Direction::Right;
     let mut next_direction = direction;
     let mut last_instant = Instant::now();
-    let mut score = 0;    // Track the score
+    let mut score = 0;
     let mut paused = false;
     let mut speed = initial_speed; // Start with the selected speed
 
-    let game_over_message; // Will set this when the game ends
+    // We'll store the final game-over message here
+    let game_over_message: &str;
 
     // Draw initial walls and initial status
     draw_score(&mut stdout, score, speed)?;
     draw_walls(&mut stdout, width, height)?;
 
-    loop {
-        // Check for user input (non-blocking)
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key_event) = event::read()? {
-                match key_event.code {
-                    KeyCode::Char('q') => {
-                        game_over_message = "You quit!";
-                        break;
-                    }
-                    KeyCode::Char(' ') => {
-                        paused = !paused;
-                    }
-                    KeyCode::Char('+') => {
-                        if speed > 50 {
-                            speed -= 50; // Speed up
-                            draw_score(&mut stdout, score, speed)?;
+    // Label the loop so we can break out with `break 'game_loop;`
+    'game_loop: loop {
+        //
+        // 1) Drain all pending key events in a *while* loop
+        //
+        while event::poll(Duration::from_millis(0))? {
+            // Read the event
+            match event::read()? {
+                Event::Key(key_event) => {
+                    match key_event.code {
+                        KeyCode::Char('q') => {
+                            // Quit the game
+                            game_over_message = "You quit!";
+                            break 'game_loop;
                         }
-                    }
-                    KeyCode::Char('-') => {
-                        if speed < 500 {
-                            speed += 50; // Slow down
-                            draw_score(&mut stdout, score, speed)?;
+                        KeyCode::Char(' ') => {
+                            // Pause/unpause
+                            paused = !paused;
                         }
+                        KeyCode::Char('+') => {
+                            // Speed up
+                            if speed > 50 {
+                                speed -= 50;
+                                draw_score(&mut stdout, score, speed)?;
+                            }
+                        }
+                        KeyCode::Char('-') => {
+                            // Slow down
+                            if speed < 500 {
+                                speed += 50;
+                                draw_score(&mut stdout, score, speed)?;
+                            }
+                        }
+                        // Direction changes, avoiding reverse
+                        KeyCode::Up if direction != Direction::Down => {
+                            next_direction = Direction::Up;
+                        }
+                        KeyCode::Down if direction != Direction::Up => {
+                            next_direction = Direction::Down;
+                        }
+                        KeyCode::Left if direction != Direction::Right => {
+                            next_direction = Direction::Left;
+                        }
+                        KeyCode::Right if direction != Direction::Left => {
+                            next_direction = Direction::Right;
+                        }
+                        _ => {}
                     }
-                    // Direction changes. Disallow reversing directly into yourself.
-                    KeyCode::Up if direction != Direction::Down => {
-                        next_direction = Direction::Up;
-                    }
-                    KeyCode::Down if direction != Direction::Up => {
-                        next_direction = Direction::Down;
-                    }
-                    KeyCode::Left if direction != Direction::Right => {
-                        next_direction = Direction::Left;
-                    }
-                    KeyCode::Right if direction != Direction::Left => {
-                        next_direction = Direction::Right;
-                    }
-                    _ => {}
                 }
+                _ => {}
             }
         }
 
+        //
+        // 2) If the game is paused, just sleep a bit and skip movement
+        //
         if paused {
+            std::thread::sleep(Duration::from_millis(10));
             continue;
         }
 
-        // Check if it's time to move the snake
+        //
+        // 3) Check if it's time to move the snake
+        //
         if last_instant.elapsed() >= Duration::from_millis(speed) {
             last_instant = Instant::now();
 
@@ -153,12 +167,12 @@ fn main() -> crossterm::Result<()> {
             // Check collisions: walls
             if new_head.x < 1 || new_head.x >= width - 1 || new_head.y < 1 || new_head.y >= height - 1 {
                 game_over_message = "Game Over! You hit the wall!";
-                break;
+                break 'game_loop;
             }
             // Check collisions: self
             if snake_positions.contains(&new_head) {
                 game_over_message = "Game Over! You hit yourself!";
-                break;
+                break 'game_loop;
             }
 
             // Update snake
@@ -196,12 +210,21 @@ fn main() -> crossterm::Result<()> {
             }
         }
 
-        // Render the snake and the food
+        //
+        // 4) Render the snake and the food
+        //
         render_snake_and_food(&mut stdout, &snake, &food)?;
         stdout.flush()?;
+
+        //
+        // 5) Small sleep to avoid busy-looping at 100% CPU
+        //
+        std::thread::sleep(Duration::from_millis(10));
     }
 
-    // Game is over, display the final message
+    //
+    // The game is over (via break), display the final message
+    //
     execute!(
         stdout,
         cursor::MoveTo(0, height as u16 + 2),
@@ -446,7 +469,7 @@ fn draw_splash_screen(stdout: &mut std::io::Stdout) -> crossterm::Result<()> {
         Print("Starting the game in 3 seconds...")
     )?;
 
-    stdout.flush()?; 
+    stdout.flush()?;
     std::thread::sleep(std::time::Duration::from_secs(3));
 
     Ok(())
