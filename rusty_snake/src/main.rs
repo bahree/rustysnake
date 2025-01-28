@@ -24,6 +24,12 @@ fn main() -> crossterm::Result<()> {
     terminal::enable_raw_mode()?;
     execute!(stdout, terminal::Clear(ClearType::All), cursor::Hide)?;
 
+     // Display the splash screen
+     draw_splash_screen(&mut stdout)?;
+
+     // Clear the screen after selection
+    execute!(stdout, terminal::Clear(ClearType::All))?;
+
     // Allow the user to select the boundary size and initial speed
     let (width, height, initial_speed) = select_game_settings(&mut stdout)?;
 
@@ -346,5 +352,42 @@ fn wait_for_enter() -> crossterm::Result<()> {
             }
         }
     }
+    Ok(())
+}
+
+fn draw_splash_screen(stdout: &mut std::io::Stdout) -> crossterm::Result<()> {
+    let snake_art = r#"
+       /^\\/^\\
+      / o   o \\
+     (    ^    )
+      \\_______/
+       |     |
+       |     |
+    "#;
+
+    // Clear the screen
+    execute!(stdout, terminal::Clear(ClearType::All))?;
+
+    // Print the ASCII snake art
+    for (i, line) in snake_art.lines().enumerate() {
+        execute!(
+            stdout,
+            cursor::MoveTo(10, i as u16 + 5), // Position the snake art centrally
+            Print(line)
+        )?;
+    }
+
+    // Print a message below the ASCII snake
+    execute!(
+        stdout,
+        cursor::MoveTo(10, 12),
+        Print("Starting the game in 3 seconds...")
+    )?;
+
+    stdout.flush()?; // Ensure the output is displayed
+
+    // Wait for 3 seconds
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
     Ok(())
 }
