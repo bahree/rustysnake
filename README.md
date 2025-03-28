@@ -1,6 +1,6 @@
 # Rusty Snake 🐍
 
-![](rusty_snake\images\ascii-text-art.jpg)
+![](rusty_snake/images/ascii-text-art.jpg)
 Rusty Snake is a classic snake game built in Rust for the terminal, with a modern twist! Enjoy dynamic gameplay with customizable settings and real-time controls.
 
 ---
