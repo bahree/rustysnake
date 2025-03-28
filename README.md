@@ -73,13 +73,11 @@ Rusty Snake is a classic snake game built in Rust for the terminal, with a moder
 
 ## Screenshots
 
-![](rusty_snake/images/rust1.jpg)
+![](rusty_snake/images/rusty1.jpg)
 
+![](rusty_snake/images/rusty2.jpg)
 
-![](rusty_snake/images/rust2.jpg)
-
-
-![](rusty_snake/images/rust3.jpg)
+![](rusty_snake/images/rusty3.jpg)
 
 ## License
 
