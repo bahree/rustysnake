@@ -1,30 +1,41 @@
 # Rusty Snake 🐍
 
-Rusty Snake is a classic snake game built in Rust for the terminal. Enjoy the nostalgic gameplay experience with modern enhancements and cross-platform support.
+![](rusty_snake/images/ascii-text-art.jpg)
+
+Rusty Snake is a classic snake game built in Rust for the terminal, with a modern twist! Enjoy dynamic gameplay with customizable settings and real-time controls.
 
 ---
 
 ## Features
 
-- **Simple Gameplay**: Easy-to-learn controls for everyone.
-- **Cross-Platform**: Runs on Windows, Linux, and macOS.
-- **Customizable Settings**: Choose game difficulty and boundary size.
-- **Dynamic Scoring**: Keep track of your score while avoiding obstacles.
+- **Terminal-based Gameplay:** Experience classic snake action rendered using [`crossterm`](https://github.com/crossterm-rs/crossterm) and randomized food generation via [`rand`](https://github.com/rust-random/rand).
+- **Customizable Settings:**
+  - **Boundary Sizes:** Choose from Small (20x10), Medium (40x20), or Large (60x30).
+  - **Difficulties:** Adjust the game speed with:
+    - **Easy:** 300ms per tick
+    - **Normal:** 200ms per tick
+    - **Hard:** 100ms per tick
+- **Dynamic Gameplay Elements:**
+  - **Splash Screen:** Enjoy an ASCII art splash screen at the start.
+  - **Real-time Controls:** Use arrow keys to steer your snake, spacebar to pause/resume, `+` and `-` to adjust speed, and `q` to quit.
+  - **Dynamic Scoring:** Eat the red food (`■`) to grow and increase your score, but avoid hitting the walls (`#`) or your own tail.
 
 ---
 
 ## Installation
 
 ### Precompiled Binaries
+
 1. Download the latest release for your operating system from the [Releases](https://github.com/your-repo-name/releases) page.
 2. Extract the archive and run the executable:
-   - **Windows**: Run `rusty_snake.exe` in the terminal or double-click it.
-   - **Linux/macOS**: Open a terminal and run `./rusty_snake`.
+   - **Windows:** Run `rusty_snake.exe`.
+   - **Linux/macOS:** Open a terminal and run `./rusty_snake`.
 
 ### Build from Source
+
 1. Install [Rust](https://www.rust-lang.org/tools/install).
 2. Clone the repository:
-   ```bash
+   ```sh
    git clone https://github.com/your-repo-name.git
    cd rusty_snake
    ```
@@ -41,8 +52,8 @@ Rusty Snake is a classic snake game built in Rust for the terminal. Enjoy the no
 
 ## Controls
 
-| Key           | Action                          |
-|---------------|---------------------------------|
+| Key           | Action                         |
+|---------------|--------------------------------|
 | `Arrow Keys`  | Move the snake                 |
 | `+`           | Increase game speed            |
 | `-`           | Decrease game speed            |
@@ -60,6 +71,14 @@ Rusty Snake is a classic snake game built in Rust for the terminal. Enjoy the no
 
 ---
 
+## Screenshots
+
+![](rusty_snake/images/rusty1.jpg)
+
+![](rusty_snake/images/rusty2.jpg)
+
+![](rusty_snake/images/rusty3.jpg)
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute the game.
@@ -75,4 +94,3 @@ Contributions are welcome! If you have ideas for improvements or find any bugs, 
 ## Author
 
 Created with ❤️ by [Amit Bahree](https://github.com/bahree) and an LLM.
-
