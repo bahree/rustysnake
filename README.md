@@ -84,7 +84,3 @@ Contributions are welcome! If you have ideas for improvements or find any bugs, 
 ## Author
 
 Created with ❤️ by [Amit Bahree](https://github.com/bahree) and an LLM.
-
----
-
-You can copy and customize this README to match your repository's details. Let me know if you need help adding more sections or publishing your game on GitHub! 🚀
