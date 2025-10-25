@@ -22,6 +22,8 @@ Rusty Snake is a classic snake game built in Rust for the terminal, with a moder
 
 ---
 
+[![ko-fi](https://img.shields.io/badge/ko--fi-Fuel%20my%20AI-29abe0?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/bahree)
+
 ## Installation
 
 ### Precompiled Binaries
